@@ -34,13 +34,23 @@ const ITEM_BOX_POSITIONS = [
 
 const gameLoops = new Map<string, { loop: GameLoop; powerUps: PowerUpManager; interval: NodeJS.Timeout }>();
 
+// Fix 4: clamp helper for input validation
+function clamp(v: number, min: number, max: number): number {
+  return Math.max(min, Math.min(max, v));
+}
+
+// Fix 6: broadcastRoomState strips internal socketId details
 function broadcastRoomState(roomCode: string): void {
   const room = roomManager.getRoom(roomCode);
   if (!room) return;
+  const players: Record<string, { nickname: string; carIndex: number; ready: boolean; isHost: boolean }> = {};
+  for (const [id, p] of room.players) {
+    players[id] = { nickname: p.nickname, carIndex: p.carIndex, ready: p.ready, isHost: p.isHost };
+  }
   io.to(roomCode).emit(EV_ROOM_STATE, {
     code: room.code,
     name: room.name,
-    players: Array.from(room.players.values()),
+    players,
     phase: room.phase,
   });
 }
@@ -50,7 +60,10 @@ function startGameLoop(roomCode: string): void {
   if (!room) return;
 
   const playerIds = Array.from(room.players.keys());
-  const loop = new GameLoop(playerIds);
+  // Fix 7: pass nicknames to GameLoop
+  const nicknames: Record<string, string> = {};
+  for (const [id, p] of room.players) nicknames[id] = p.nickname;
+  const loop = new GameLoop(playerIds, nicknames);
   const powerUps = new PowerUpManager(ITEM_BOX_POSITIONS);
   loop.startCountdown();
 
@@ -65,6 +78,11 @@ function startGameLoop(roomCode: string): void {
     // Sync power-up state into game state
     state.activeEffects = powerUps.getActiveEffects();
     state.itemBoxes = powerUps.getBoxStates();
+
+    // Fix 3: emit EV_COUNTDOWN during countdown phase
+    if (state.phase === 'countdown') {
+      io.to(roomCode).emit(EV_COUNTDOWN, state.countdown);
+    }
 
     io.to(roomCode).emit(EV_GAME_STATE, state);
 
@@ -91,6 +109,11 @@ io.on('connection', (socket: Socket) => {
   });
 
   socket.on(EV_JOIN_ROOM, ({ nickname, code }: { nickname: string; code: string }) => {
+    // Fix 4: validate payload types
+    if (typeof code !== 'string' || typeof nickname !== 'string') {
+      socket.emit(EV_ERROR, 'Invalid payload.');
+      return;
+    }
     const room = roomManager.joinRoom(socket.id, code.toUpperCase(), nickname);
     if (!room) { socket.emit(EV_ERROR, 'Room not found or full.'); return; }
     socket.join(room.code);
@@ -119,6 +142,11 @@ io.on('connection', (socket: Socket) => {
     const player = room.players.get(socket.id);
     if (!player?.isHost) { socket.emit(EV_ERROR, 'Only the host can start.'); return; }
     if (room.playerCount < MIN_PLAYERS_TO_START) { socket.emit(EV_ERROR, 'Need at least 2 players.'); return; }
+    // Fix 5: guard against double-start
+    if (room.phase !== 'waiting') {
+      socket.emit(EV_ERROR, 'Race already in progress.');
+      return;
+    }
     room.phase = 'countdown';
     startGameLoop(room.code);
   });
@@ -126,15 +154,23 @@ io.on('connection', (socket: Socket) => {
   socket.on(EV_PLAYER_INPUT, (input: PlayerInput) => {
     const room = roomManager.getRoomByPlayer(socket.id);
     if (!room) return;
+    // Fix 4: validate and clamp input
+    if (typeof input?.throttle !== 'number' || typeof input?.steer !== 'number') return;
+    input.throttle = clamp(input.throttle, 0, 1);
+    input.brake = clamp(input.brake ?? 0, 0, 1);
+    input.steer = clamp(input.steer, -1, 1);
     const entry = gameLoops.get(room.code);
     if (entry) entry.loop.applyInput(socket.id, input);
   });
 
-  socket.on(EV_USE_ITEM, ({ position }: { position: { x: number; y: number; z: number } }) => {
+  // Fix 1: derive position server-side from physics state
+  socket.on(EV_USE_ITEM, () => {
     const room = roomManager.getRoomByPlayer(socket.id);
     if (!room) return;
     const entry = gameLoops.get(room.code);
-    if (entry) entry.powerUps.useItem(socket.id, position);
+    if (!entry) return;
+    const playerState = entry.loop.state.players[socket.id];
+    if (playerState) entry.powerUps.useItem(socket.id, playerState.position);
   });
 
   socket.on(EV_LEAVE_ROOM, () => handleLeave(socket));
@@ -144,10 +180,20 @@ io.on('connection', (socket: Socket) => {
     console.log(`[-] ${sock.id} disconnected`);
     const room = roomManager.getRoomByPlayer(sock.id);
     if (room) io.to(room.code).emit(EV_PLAYER_LEFT, sock.id);
+    const roomCode = room?.code;
     roomManager.leaveRoom(sock.id);
-    if (room) {
-      const remaining = roomManager.getRoom(room.code);
-      if (remaining) broadcastRoomState(room.code);
+    if (roomCode) {
+      const remaining = roomManager.getRoom(roomCode);
+      if (remaining) {
+        broadcastRoomState(roomCode);
+      } else {
+        // Fix 2: all players left — clean up game loop to prevent resource leak
+        const entry = gameLoops.get(roomCode);
+        if (entry) {
+          clearInterval(entry.interval);
+          gameLoops.delete(roomCode);
+        }
+      }
     }
   }
 });
