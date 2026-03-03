@@ -7,9 +7,8 @@ function randomItem(): ItemType {
   return ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
 }
 
-function uid(): string {
-  return Math.random().toString(36).slice(2, 9);
-}
+let nextEffectId = 0;
+function uid(): string { return `eff_${nextEffectId++}`; }
 
 export class PowerUpManager {
   private boxes: ItemBoxState[];
@@ -27,6 +26,7 @@ export class PowerUpManager {
   }
 
   collectBox(playerId: string, boxIndex: number): { item: ItemType } | null {
+    if (boxIndex < 0 || boxIndex >= this.boxes.length || !Number.isInteger(boxIndex)) return null;
     const box = this.boxes[boxIndex];
     if (!box || !box.active) return null;
     if (this.playerItems.has(playerId)) return null;
@@ -38,8 +38,9 @@ export class PowerUpManager {
     return { item };
   }
 
-  useItem(playerId: string, item: ItemType, position: Vec3): void {
-    if (!this.playerItems.has(playerId)) return;
+  useItem(playerId: string, position: Vec3): void {
+    const item = this.playerItems.get(playerId);
+    if (!item) return;
     this.playerItems.delete(playerId);
 
     if (item === 'missile' || item === 'banana' || item === 'oil') {
@@ -56,15 +57,16 @@ export class PowerUpManager {
 
   tick(deltaMs: number): void {
     this.currentTick++;
+    const expired: string[] = [];
     for (const [boxId, remaining] of this.boxRespawnTimers) {
       const next = remaining - deltaMs;
-      if (next <= 0) {
-        this.boxRespawnTimers.delete(boxId);
-        const box = this.boxes.find(b => b.id === boxId);
-        if (box) box.active = true;
-      } else {
-        this.boxRespawnTimers.set(boxId, next);
-      }
+      if (next <= 0) expired.push(boxId);
+      else this.boxRespawnTimers.set(boxId, next);
+    }
+    for (const id of expired) {
+      this.boxRespawnTimers.delete(id);
+      const box = this.boxes.find(b => b.id === id);
+      if (box) box.active = true;
     }
   }
 

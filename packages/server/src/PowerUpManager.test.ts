@@ -1,5 +1,5 @@
 // packages/server/src/PowerUpManager.test.ts
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { PowerUpManager } from './PowerUpManager';
 
 const ITEM_BOX_POSITIONS = [
@@ -40,16 +40,17 @@ describe('PowerUpManager', () => {
   });
 
   it('launches missile effect when player fires', () => {
+    vi.spyOn(Math, 'random').mockReturnValueOnce(0); // force missile (index 0)
     mgr.collectBox('p1', 0);
-    mgr.useItem('p1', 'missile', { x: 0, y: 0, z: 0 });
+    mgr.useItem('p1', { x: 0, y: 0, z: 0 });
     expect(mgr.getActiveEffects().length).toBe(1);
     expect(mgr.getActiveEffects()[0].type).toBe('missile');
+    vi.restoreAllMocks();
   });
 
   it('clears player item after use', () => {
     mgr.collectBox('p1', 0);
-    const item = mgr.getPlayerItem('p1');
-    mgr.useItem('p1', item!, { x: 0, y: 0, z: 0 });
+    mgr.useItem('p1', { x: 0, y: 0, z: 0 });
     expect(mgr.getPlayerItem('p1')).toBeNull();
   });
 });
