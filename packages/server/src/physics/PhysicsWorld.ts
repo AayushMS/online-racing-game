@@ -1,9 +1,10 @@
 // packages/server/src/physics/PhysicsWorld.ts
 import * as CANNON from 'cannon-es';
+import { GRAVITY } from '@racing/shared';
 
 export function createPhysicsWorld(): CANNON.World {
   const world = new CANNON.World();
-  world.gravity.set(0, -20, 0);
+  world.gravity.set(0, GRAVITY, 0);
   world.broadphase = new CANNON.SAPBroadphase(world);
   world.allowSleep = true;
 

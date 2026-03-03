@@ -13,6 +13,8 @@ export const SHIELD_DURATION_MS = 5000;
 
 export const COUNTDOWN_SECONDS = 3;
 
+export const GRAVITY = -20; // m/s² — arcade-style doubled gravity for snappier ground contact
+
 export const CAR_MAX_SPEED = 30; // m/s
 export const CAR_ACCELERATION = 15;
 export const CAR_BRAKE_DECEL = 25;

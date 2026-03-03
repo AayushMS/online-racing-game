@@ -84,6 +84,7 @@ export class GameLoop {
       const input = this.pendingInputs.get(id);
       if (input) car.applyInput(input, this.dt);
     }
+    this.pendingInputs.clear();
 
     // Step physics
     this.world.step(this.dt);

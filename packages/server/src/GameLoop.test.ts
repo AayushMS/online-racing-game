@@ -1,5 +1,5 @@
 // packages/server/src/GameLoop.test.ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { GameLoop } from './GameLoop';
 
 describe('GameLoop', () => {

@@ -1,14 +1,8 @@
 // packages/server/src/physics/CarBody.ts
 import * as CANNON from 'cannon-es';
-import { CAR_MAX_SPEED, CAR_ACCELERATION, CAR_BRAKE_DECEL, CAR_TURN_SPEED } from '@racing/shared';
+import { CAR_MAX_SPEED, CAR_ACCELERATION, CAR_BRAKE_DECEL, CAR_TURN_SPEED, PlayerInputPayload } from '@racing/shared';
 
-export interface PlayerInput {
-  steer: number;    // -1.0 to 1.0
-  throttle: number; // 0 to 1.0
-  brake: number;    // 0 to 1.0
-  seq: number;
-  timestamp: number;
-}
+export type PlayerInput = PlayerInputPayload;
 
 const CAR_HALF_EXTENTS = new CANNON.Vec3(0.9, 0.4, 1.8);
 
