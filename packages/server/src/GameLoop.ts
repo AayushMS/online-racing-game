@@ -23,7 +23,7 @@ export class GameLoop {
   private countdownTicks = 0;
   private readonly dt = TICK_MS / 1000;
 
-  constructor(playerIds: string[]) {
+  constructor(playerIds: string[], nicknames: Record<string, string> = {}) {
     this.world = createPhysicsWorld();
 
     const players: Record<string, PlayerState> = {};
@@ -33,7 +33,7 @@ export class GameLoop {
       this.carBodies.set(id, car);
       players[id] = {
         id,
-        nickname: 'Player',
+        nickname: nicknames[id] ?? 'Player',
         carIndex: i % 5,
         position: { x: startPos.x, y: startPos.y, z: startPos.z },
         rotation: { x: 0, y: 0, z: 0, w: 1 },
