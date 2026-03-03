@@ -25,7 +25,7 @@ interface RoomStateData {
 
 export function LobbyScreen({ appState, navigate }: Props) {
   const socket = useSocketContext();
-  const [roomState, setRoomState] = useState<RoomStateData | null>(null);
+  const [roomState, setRoomState] = useState<RoomStateData | null>(appState.initialRoomState ?? null);
   const [ready, setReady] = useState(false);
 
   useSocketEvent<RoomStateData>(EV_ROOM_STATE, setRoomState);

@@ -12,6 +12,8 @@ export interface AppState {
   screen: Screen;
   nickname: string;
   roomCode: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  initialRoomState?: any;
 }
 
 export default function App() {

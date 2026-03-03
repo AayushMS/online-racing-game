@@ -15,8 +15,8 @@ export function HomeScreen({ navigate }: Props) {
   const [roomCode, setRoomCode] = useState('');
   const [error, setError] = useState('');
 
-  useSocketEvent<{ code: string }>(EV_ROOM_STATE, (data) => {
-    navigate('lobby', { nickname, roomCode: data.code });
+  useSocketEvent(EV_ROOM_STATE, (data: any) => {
+    navigate('lobby', { nickname, roomCode: data.code, initialRoomState: data });
   });
 
   useSocketEvent<string>('error', (msg) => {
