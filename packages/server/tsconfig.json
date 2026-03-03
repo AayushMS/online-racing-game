@@ -7,7 +7,7 @@
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "paths": { "@racing/shared": ["../shared/src"] }
+    "paths": { "@racing/shared": ["../shared/dist"] }
   },
   "include": ["src"]
 }
