@@ -15,6 +15,7 @@ export class CarBody {
     this.body = new CANNON.Body({ mass: 150, linearDamping: 0.4, angularDamping: 0.99 });
     this.body.addShape(shape);
     this.body.position.copy(startPos);
+    this.body.angularFactor.set(0, 1, 0); // lock pitch and roll — only yaw allowed
     world.addBody(this.body);
   }
 

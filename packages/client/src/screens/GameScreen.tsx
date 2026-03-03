@@ -1,11 +1,10 @@
 // packages/client/src/screens/GameScreen.tsx
 import React, { useRef, useEffect, useState } from 'react';
-import * as CANNON from 'cannon-es';
+import * as THREE from 'three';
 import { useSocketContext } from '../network/SocketContext';
 import { useSocketEvent } from '../network/useSocket';
 import { SceneManager } from '../game/SceneManager';
 import { KartPool } from '../game/KartPool';
-import { ClientPhysics } from '../game/ClientPhysics';
 import { InputHandler } from '../game/InputHandler';
 import { createTrack } from '../game/Track';
 import { createItemBoxes, syncItemBoxes, animateItemBoxes } from '../game/ItemBoxes';
@@ -27,17 +26,10 @@ export function GameScreen({ appState, navigate }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const stateRef = useRef<GameState | null>(null);
-  const physicsRef = useRef<ClientPhysics | null>(null);
 
   useSocketEvent<GameState>(EV_GAME_STATE, (state) => {
     setGameState(state);
     stateRef.current = state;
-    const myState = state.players[socket.id ?? ''];
-    if (myState && physicsRef.current) {
-      const serverPos = new CANNON.Vec3(myState.position.x, myState.position.y, myState.position.z);
-      const serverQuat = new CANNON.Quaternion(myState.rotation.x, myState.rotation.y, myState.rotation.z, myState.rotation.w);
-      physicsRef.current.reconcile(serverPos, serverQuat, state.tick, TICK_MS / 1000);
-    }
   });
 
   useSocketEvent<unknown>(EV_RACE_FINISHED, () => {
@@ -50,8 +42,6 @@ export function GameScreen({ appState, navigate }: Props) {
 
     const scene = new SceneManager(canvas);
     const kartPool = new KartPool(scene.scene);
-    const clientPhysics = new ClientPhysics();
-    physicsRef.current = clientPhysics;
     const inputHandler = new InputHandler();
     const particles = new ParticleSystem(scene.scene);
     const itemBoxes = createItemBoxes(scene.scene);
@@ -59,18 +49,17 @@ export function GameScreen({ appState, navigate }: Props) {
 
     let seq = 0;
 
+    // Send inputs to server at tick rate
     const inputInterval = setInterval(() => {
       const input = inputHandler.getInput();
-      const frame = {
+      socket.emit(EV_PLAYER_INPUT, {
         seq: ++seq,
         steer: input.steer,
         throttle: input.throttle,
         brake: input.brake,
         timestamp: Date.now(),
-      };
-      socket.emit(EV_PLAYER_INPUT, frame);
+      });
       if (input.useItem) socket.emit(EV_USE_ITEM);
-      clientPhysics.tick(frame, TICK_MS / 1000);
     }, TICK_MS);
 
     let elapsed = 0;
@@ -79,14 +68,14 @@ export function GameScreen({ appState, navigate }: Props) {
       const state = stateRef.current;
       if (!state) return;
 
+      // All karts (including own) rendered from authoritative server state
       kartPool.syncPlayers(state.players);
 
-      const myKart = kartPool.getKart(socket.id ?? '');
-      if (myKart) {
-        const pos = clientPhysics.getPosition();
-        const quat = clientPhysics.getQuaternion();
-        myKart.position.copy(pos);
-        myKart.quaternion.copy(quat);
+      // Camera follows own kart using server state
+      const myState = state.players[socket.id ?? ''];
+      if (myState) {
+        const pos = new THREE.Vector3(myState.position.x, myState.position.y, myState.position.z);
+        const quat = new THREE.Quaternion(myState.rotation.x, myState.rotation.y, myState.rotation.z, myState.rotation.w);
         scene.followTarget(pos, quat);
       }
 
@@ -97,9 +86,8 @@ export function GameScreen({ appState, navigate }: Props) {
 
     return () => {
       clearInterval(inputInterval);
-      physicsRef.current = null;
-      kartPool.dispose();
       inputHandler.dispose();
+      kartPool.dispose();
       scene.dispose();
     };
   }, []);
