@@ -1,11 +1,14 @@
 // packages/client/src/network/useSocket.ts
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useSocketContext } from './SocketContext';
 
 export function useSocketEvent<T>(event: string, handler: (data: T) => void): void {
   const socket = useSocketContext();
+  const handlerRef = useRef(handler);
+  handlerRef.current = handler;
   useEffect(() => {
-    socket.on(event, handler);
-    return () => { socket.off(event, handler); };
-  }, [socket, event, handler]);
+    const fn = (data: T) => handlerRef.current(data);
+    socket.on(event, fn);
+    return () => { socket.off(event, fn); };
+  }, [socket, event]);
 }

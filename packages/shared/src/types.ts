@@ -88,7 +88,7 @@ export interface JoinRoomPayload {
 
 export interface CreateRoomPayload {
   nickname: string;
-  name: string;       // room name
+  roomName: string;
   isPrivate: boolean;
 }
 

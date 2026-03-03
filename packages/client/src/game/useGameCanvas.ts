@@ -10,7 +10,7 @@ export function useGameCanvas(onInit: (mgr: SceneManager) => () => void) {
     if (!canvas) return;
     const mgr = new SceneManager(canvas);
     const cleanup = onInit(mgr);
-    return () => { cleanup(); mgr.stopRenderLoop(); mgr.renderer.dispose(); };
+    return () => { cleanup(); mgr.dispose(); };
   }, []);
 
   return canvasRef;

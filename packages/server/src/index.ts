@@ -8,7 +8,7 @@ import {
   EV_CREATE_ROOM, EV_JOIN_ROOM, EV_MATCHMAKE, EV_PLAYER_READY,
   EV_START_RACE, EV_PLAYER_INPUT, EV_USE_ITEM, EV_LEAVE_ROOM,
   EV_ROOM_STATE, EV_GAME_STATE, EV_ERROR, EV_PLAYER_JOINED,
-  EV_PLAYER_LEFT, EV_COUNTDOWN, EV_RACE_FINISHED,
+  EV_PLAYER_LEFT, EV_COUNTDOWN, EV_RACE_FINISHED, EV_RACE_STARTED,
   TICK_MS, MIN_PLAYERS_TO_START,
 } from '@racing/shared';
 import { PlayerInput } from './physics/CarBody';
@@ -149,6 +149,7 @@ io.on('connection', (socket: Socket) => {
     }
     room.phase = 'countdown';
     startGameLoop(room.code);
+    io.to(room.code).emit(EV_RACE_STARTED);
   });
 
   socket.on(EV_PLAYER_INPUT, (input: PlayerInput) => {

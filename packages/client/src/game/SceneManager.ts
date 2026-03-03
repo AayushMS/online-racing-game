@@ -6,6 +6,7 @@ export class SceneManager {
   camera: THREE.PerspectiveCamera;
   renderer: THREE.WebGLRenderer;
   private animFrameId: number | null = null;
+  private resizeObserver!: ResizeObserver;
 
   constructor(canvas: HTMLCanvasElement) {
     this.scene = new THREE.Scene();
@@ -37,7 +38,8 @@ export class SceneManager {
     sun.shadow.mapSize.set(2048, 2048);
     this.scene.add(sun);
 
-    new ResizeObserver(() => this.onResize(canvas)).observe(canvas);
+    this.resizeObserver = new ResizeObserver(() => this.onResize(canvas));
+    this.resizeObserver.observe(canvas);
   }
 
   private onResize(canvas: HTMLCanvasElement): void {
@@ -60,6 +62,12 @@ export class SceneManager {
 
   stopRenderLoop(): void {
     if (this.animFrameId !== null) cancelAnimationFrame(this.animFrameId);
+  }
+
+  dispose(): void {
+    this.stopRenderLoop();
+    this.resizeObserver.disconnect();
+    this.renderer.dispose();
   }
 
   followTarget(targetPos: THREE.Vector3, targetRot: THREE.Quaternion): void {

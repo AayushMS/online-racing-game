@@ -1,5 +1,6 @@
 // packages/client/src/screens/GameScreen.tsx
 import React, { useRef, useEffect, useState } from 'react';
+import * as CANNON from 'cannon-es';
 import { useSocketContext } from '../network/SocketContext';
 import { useSocketEvent } from '../network/useSocket';
 import { SceneManager } from '../game/SceneManager';
@@ -26,10 +27,17 @@ export function GameScreen({ appState, navigate }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState<GameState | null>(null);
   const stateRef = useRef<GameState | null>(null);
+  const physicsRef = useRef<ClientPhysics | null>(null);
 
   useSocketEvent<GameState>(EV_GAME_STATE, (state) => {
     setGameState(state);
     stateRef.current = state;
+    const myState = state.players[socket.id ?? ''];
+    if (myState && physicsRef.current) {
+      const serverPos = new CANNON.Vec3(myState.position.x, myState.position.y, myState.position.z);
+      const serverQuat = new CANNON.Quaternion(myState.rotation.x, myState.rotation.y, myState.rotation.z, myState.rotation.w);
+      physicsRef.current.reconcile(serverPos, serverQuat, state.tick, TICK_MS / 1000);
+    }
   });
 
   useSocketEvent<unknown>(EV_RACE_FINISHED, () => {
@@ -43,6 +51,7 @@ export function GameScreen({ appState, navigate }: Props) {
     const scene = new SceneManager(canvas);
     const kartPool = new KartPool(scene.scene);
     const clientPhysics = new ClientPhysics();
+    physicsRef.current = clientPhysics;
     const inputHandler = new InputHandler();
     const particles = new ParticleSystem(scene.scene);
     const itemBoxes = createItemBoxes(scene.scene);
@@ -88,10 +97,10 @@ export function GameScreen({ appState, navigate }: Props) {
 
     return () => {
       clearInterval(inputInterval);
-      scene.stopRenderLoop();
+      physicsRef.current = null;
       kartPool.dispose();
       inputHandler.dispose();
-      scene.renderer.dispose();
+      scene.dispose();
     };
   }, []);
 
