@@ -12,7 +12,7 @@ describe('RoomManager', () => {
   it('creates a private room with a 6-char code', () => {
     const room = mgr.createRoom('player1', 'Test Room', true);
     expect(room.code).toHaveLength(6);
-    expect(room.code).toMatch(/^[A-Z0-9]{6}$/);
+    expect(room.code).toMatch(/^[A-HJ-NP-Z2-9]{6}$/);
     expect(room.isPrivate).toBe(true);
   });
 
@@ -59,5 +59,15 @@ describe('RoomManager', () => {
     const room = mgr.createRoom('player1', 'Room', false);
     mgr.leaveRoom('player1');
     expect(mgr.getRoom(room.code)).toBeNull();
+  });
+
+  it('transfers host when host leaves a non-empty room', () => {
+    const room = mgr.createRoom('host', 'Room', false);
+    mgr.joinRoom('player2', room.code);
+    mgr.leaveRoom('host');
+    const remaining = mgr.getRoom(room.code);
+    const newHost = [...remaining!.players.values()].find(p => p.isHost);
+    expect(newHost).toBeDefined();
+    expect(newHost!.socketId).toBe('player2');
   });
 });
