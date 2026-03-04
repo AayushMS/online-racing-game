@@ -20,7 +20,7 @@ function catmullRom1D(p0: number, p1: number, p2: number, p3: number, t: number)
 
 /** Evaluate the closed Catmull-Rom curve at t in [0, 1) */
 export function evalTrackCurve(t: number): [number, number] {
-  const segment = ((t % 1) + 1) % 1 * N;
+  const segment = (((t % 1) + 1) % 1) * N;
   const i = Math.floor(segment);
   const localT = segment - i;
   const p0 = TRACK_CONTROL_POINTS[(i - 1 + N) % N];
