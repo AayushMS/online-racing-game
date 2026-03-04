@@ -12,6 +12,7 @@ import { ParticleSystem } from '../game/ParticleSystem';
 import { SkidMarks } from '../game/SkidMarks';
 import { AudioManager } from '../game/AudioManager';
 import { HUD } from '../components/HUD';
+import { MiniMap } from '../components/MiniMap';
 import {
   EV_GAME_STATE, EV_PLAYER_INPUT, EV_USE_ITEM, EV_RACE_FINISHED,
   GameState, TICK_MS, RaceResult,
@@ -155,6 +156,7 @@ export function GameScreen({ appState, navigate }: Props) {
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
       <canvas ref={canvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
       {gameState && <HUD state={gameState} myId={socket.id ?? ''} lapTimes={lapTimes} />}
+      {gameState && <MiniMap state={gameState} myId={socket.id ?? ''} />}
     </div>
   );
 }
