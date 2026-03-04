@@ -1,5 +1,6 @@
 // packages/client/src/App.tsx
 import React, { useState } from 'react';
+import { RaceResult } from '@racing/shared';
 import { SocketProvider } from './network/SocketContext';
 import { HomeScreen } from './screens/HomeScreen';
 import { LobbyScreen } from './screens/LobbyScreen';
@@ -14,8 +15,7 @@ export interface AppState {
   roomCode: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialRoomState?: any;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  raceResults?: any[];
+  raceResults?: RaceResult[];
 }
 
 export default function App() {
