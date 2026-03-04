@@ -10,14 +10,14 @@ function randomItem(): ItemType {
   return ITEM_POOL[Math.floor(Math.random() * ITEM_POOL.length)];
 }
 
-let nextEffectId = 0;
-function uid(): string { return `eff_${nextEffectId++}`; }
 
 export class PowerUpManager {
   private boxes: ItemBoxState[];
   private boxRespawnTimers: Map<string, number> = new Map();
   private playerItems: Map<string, ItemType> = new Map();
   private activeEffects: ActiveEffect[] = [];
+  private nextEffectId = 0;
+  private uid(): string { return `eff_${this.nextEffectId++}`; }
   private currentTick = 0;
 
   constructor(positions: Vec3[]) {
@@ -51,17 +51,17 @@ export class PowerUpManager {
         ? { x: forward.x * MISSILE_SPEED, y: 0, z: forward.z * MISSILE_SPEED }
         : { x: 0, y: 0, z: -MISSILE_SPEED };
       this.activeEffects.push({
-        id: uid(), type: 'missile', position: { ...position },
+        id: this.uid(), type: 'missile', position: { ...position },
         velocity: vel, ownerId: playerId, spawnedAt: this.currentTick,
       });
     } else if (item === 'banana') {
       this.activeEffects.push({
-        id: uid(), type: 'banana', position: { ...position },
+        id: this.uid(), type: 'banana', position: { ...position },
         ownerId: playerId, spawnedAt: this.currentTick,
       });
     } else if (item === 'oil') {
       this.activeEffects.push({
-        id: uid(), type: 'oil', position: { ...position },
+        id: this.uid(), type: 'oil', position: { ...position },
         ownerId: playerId, spawnedAt: this.currentTick,
         expiresAtTick: this.currentTick + OIL_MAX_TICKS,
       });
