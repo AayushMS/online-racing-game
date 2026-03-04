@@ -5,6 +5,7 @@ import { GameState, ItemType, TOTAL_LAPS } from '@racing/shared';
 interface HUDProps {
   state: GameState;
   myId: string;
+  lapTimes?: number[];
 }
 
 const ITEM_EMOJI: Record<ItemType, string> = {

@@ -14,6 +14,8 @@ export interface AppState {
   roomCode: string;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   initialRoomState?: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  raceResults?: any[];
 }
 
 export default function App() {
