@@ -42,6 +42,11 @@ export class InputHandler {
     };
   }
 
+  getLastSteer(): number {
+    return this.keys.has('ArrowLeft') || this.keys.has('KeyA') ? -1
+      : this.keys.has('ArrowRight') || this.keys.has('KeyD') ? 1 : 0;
+  }
+
   dispose(): void {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);

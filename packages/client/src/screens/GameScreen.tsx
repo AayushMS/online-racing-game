@@ -9,6 +9,7 @@ import { InputHandler } from '../game/InputHandler';
 import { createTrack } from '../game/Track';
 import { createItemBoxes, syncItemBoxes, animateItemBoxes } from '../game/ItemBoxes';
 import { ParticleSystem } from '../game/ParticleSystem';
+import { SkidMarks } from '../game/SkidMarks';
 import { HUD } from '../components/HUD';
 import {
   EV_GAME_STATE, EV_PLAYER_INPUT, EV_USE_ITEM, EV_RACE_FINISHED,
@@ -71,6 +72,7 @@ export function GameScreen({ appState, navigate }: Props) {
     const particles = new ParticleSystem(scene.scene);
     const itemBoxes = createItemBoxes(scene.scene);
     createTrack(scene.scene);
+    const skidMarks = new SkidMarks(scene.scene);
 
     let seq = 0;
 
@@ -101,6 +103,7 @@ export function GameScreen({ appState, navigate }: Props) {
         const pos = new THREE.Vector3(myState.position.x, myState.position.y, myState.position.z);
         const quat = new THREE.Quaternion(myState.rotation.x, myState.rotation.y, myState.rotation.z, myState.rotation.w);
         scene.followTarget(pos, quat, dt);
+        skidMarks.update(pos, quat, myState.speed, inputHandler.getLastSteer());
       }
 
       animateItemBoxes(itemBoxes, elapsed);
@@ -112,6 +115,7 @@ export function GameScreen({ appState, navigate }: Props) {
       clearInterval(inputInterval);
       inputHandler.dispose();
       kartPool.dispose();
+      skidMarks.dispose();
       scene.dispose();
       sceneRef.current = null;
       kartPoolRef.current = null;
