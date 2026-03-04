@@ -10,6 +10,7 @@ import { createTrack } from '../game/Track';
 import { createItemBoxes, syncItemBoxes, animateItemBoxes } from '../game/ItemBoxes';
 import { ParticleSystem } from '../game/ParticleSystem';
 import { SkidMarks } from '../game/SkidMarks';
+import { AudioManager } from '../game/AudioManager';
 import { HUD } from '../components/HUD';
 import {
   EV_GAME_STATE, EV_PLAYER_INPUT, EV_USE_ITEM, EV_RACE_FINISHED,
@@ -32,6 +33,9 @@ export function GameScreen({ appState, navigate }: Props) {
   const sceneRef = useRef<SceneManager | null>(null);
   const lastServerUpdateRef = useRef<number>(performance.now());
   const lapTimesRef = useRef<number[]>([]);
+  const audioRef = useRef<AudioManager | null>(null);
+  const prevCountdownRef = useRef<number>(3);
+  const phaseRef = useRef<string>('');
 
   useSocketEvent<GameState>(EV_GAME_STATE, (state) => {
     const prevState = stateRef.current;
@@ -46,9 +50,29 @@ export function GameScreen({ appState, navigate }: Props) {
       }
       // Detect hit (spin appeared)
       if (myCurr && !myPrev?.spinUntilTick && myCurr.spinUntilTick) {
+        audioRef.current?.playHit();
         sceneRef.current?.triggerShake(0.5);
       }
     }
+
+    // Phase transitions
+    const prevPhase = phaseRef.current;
+    phaseRef.current = state.phase;
+    if (prevPhase === 'countdown' && state.phase === 'racing') {
+      audioRef.current?.playCountdownBeep(true);
+      audioRef.current?.startEngine();
+    }
+    if (state.phase === 'countdown' && state.countdown !== prevCountdownRef.current) {
+      if (state.countdown > 0) audioRef.current?.playCountdownBeep(false);
+      prevCountdownRef.current = state.countdown;
+    }
+    // Item collection/use sounds
+    const myPrevAudio = stateRef.current?.players[socket.id ?? ''];
+    const myCurrAudio = state.players[socket.id ?? ''];
+    if (!myPrevAudio?.heldItem && myCurrAudio?.heldItem) audioRef.current?.playCollect();
+    if (myPrevAudio?.heldItem && !myCurrAudio?.heldItem && state.phase === 'racing') audioRef.current?.playItemUse();
+    // Boost sound
+    if (!myPrevAudio?.activeBuff && myCurrAudio?.activeBuff?.type === 'boost') audioRef.current?.playBoost();
 
     setGameState(state);
     stateRef.current = state;
@@ -66,6 +90,8 @@ export function GameScreen({ appState, navigate }: Props) {
 
     const scene = new SceneManager(canvas);
     sceneRef.current = scene;
+    const audio = new AudioManager();
+    audioRef.current = audio;
     const kartPool = new KartPool(scene.scene, socket.id ?? '');
     kartPoolRef.current = kartPool;
     const inputHandler = new InputHandler();
@@ -104,6 +130,7 @@ export function GameScreen({ appState, navigate }: Props) {
         const quat = new THREE.Quaternion(myState.rotation.x, myState.rotation.y, myState.rotation.z, myState.rotation.w);
         scene.followTarget(pos, quat, dt);
         skidMarks.update(pos, quat, myState.speed, inputHandler.getLastSteer());
+        audioRef.current?.setEngineRpm(myState.speed / 30);
       }
 
       animateItemBoxes(itemBoxes, elapsed);
@@ -116,6 +143,8 @@ export function GameScreen({ appState, navigate }: Props) {
       inputHandler.dispose();
       kartPool.dispose();
       skidMarks.dispose();
+      audioRef.current?.dispose();
+      audioRef.current = null;
       scene.dispose();
       sceneRef.current = null;
       kartPoolRef.current = null;
