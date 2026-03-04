@@ -9,7 +9,7 @@ import {
   EV_START_RACE, EV_PLAYER_INPUT, EV_USE_ITEM, EV_LEAVE_ROOM,
   EV_ROOM_STATE, EV_GAME_STATE, EV_ERROR, EV_PLAYER_JOINED,
   EV_PLAYER_LEFT, EV_COUNTDOWN, EV_RACE_FINISHED, EV_RACE_STARTED,
-  TICK_MS, MIN_PLAYERS_TO_START,
+  TICK_MS, MIN_PLAYERS_TO_START, ITEM_BOX_WORLD_POSITIONS,
 } from '@racing/shared';
 import { PlayerInput } from './physics/CarBody';
 
@@ -22,15 +22,8 @@ const io = new Server(httpServer, {
 
 const roomManager = new RoomManager();
 
-// item box positions for the track (matches Track.ts in client)
-const ITEM_BOX_POSITIONS = [
-  { x: 0, y: 0.5, z: 0 },
-  { x: 20, y: 0.5, z: 10 },
-  { x: -20, y: 0.5, z: 10 },
-  { x: 30, y: 0.5, z: -30 },
-  { x: -30, y: 0.5, z: -30 },
-  { x: 0, y: 0.5, z: -60 },
-];
+// item box positions derived from shared track curve (matches client Track.ts)
+const ITEM_BOX_POSITIONS = ITEM_BOX_WORLD_POSITIONS;
 
 const gameLoops = new Map<string, { loop: GameLoop; powerUps: PowerUpManager; interval: NodeJS.Timeout }>();
 
@@ -73,13 +66,12 @@ function startGameLoop(roomCode: string): void {
   const interval = setInterval(() => {
     loop.tick();
     powerUps.tick(TICK_MS);
+    loop.tickPowerUps(powerUps); // proximity collection + effect application
 
     const state = loop.state;
-    // Sync power-up state into game state
     state.activeEffects = powerUps.getActiveEffects();
     state.itemBoxes = powerUps.getBoxStates();
 
-    // Fix 3: emit EV_COUNTDOWN during countdown phase
     if (state.phase === 'countdown') {
       io.to(roomCode).emit(EV_COUNTDOWN, state.countdown);
     }
@@ -89,10 +81,7 @@ function startGameLoop(roomCode: string): void {
     if (state.phase === 'finished') {
       clearInterval(interval);
       gameLoops.delete(roomCode);
-      const results = Object.values(state.players)
-        .sort((a, b) => (a.finishTime ?? Infinity) - (b.finishTime ?? Infinity))
-        .map((p, idx) => ({ playerId: p.id, nickname: p.nickname, position: idx + 1, finishTime: p.finishTime, bestLapMs: p.bestLapMs }));
-      io.to(roomCode).emit(EV_RACE_FINISHED, results);
+      io.to(roomCode).emit(EV_RACE_FINISHED, state.raceResults ?? []);
     }
   }, TICK_MS);
 
@@ -164,14 +153,25 @@ io.on('connection', (socket: Socket) => {
     if (entry) entry.loop.applyInput(socket.id, input);
   });
 
-  // Fix 1: derive position server-side from physics state
+  // Derive position and forward direction server-side from physics state
   socket.on(EV_USE_ITEM, () => {
     const room = roomManager.getRoomByPlayer(socket.id);
     if (!room) return;
     const entry = gameLoops.get(room.code);
     if (!entry) return;
     const playerState = entry.loop.state.players[socket.id];
-    if (playerState) entry.powerUps.useItem(socket.id, playerState.position);
+    if (!playerState) return;
+
+    // Compute forward direction from player quaternion
+    // Forward vector (0,0,-1) rotated by quaternion:
+    // fwdX = 2*(qx*qz + qw*qy), fwdZ = -(1 - 2*(qx^2 + qy^2))
+    const q = playerState.rotation;
+    const fwdX = 2 * (q.x * q.z + q.w * q.y);
+    const fwdZ = -(1 - 2 * (q.x * q.x + q.y * q.y));
+    const len = Math.sqrt(fwdX * fwdX + fwdZ * fwdZ) || 1;
+    const forward = { x: fwdX / len, y: 0, z: fwdZ / len };
+
+    entry.powerUps.useItem(socket.id, playerState.position, forward);
   });
 
   socket.on(EV_LEAVE_ROOM, () => handleLeave(socket));

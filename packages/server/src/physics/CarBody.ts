@@ -10,21 +10,23 @@ export class CarBody {
   body: CANNON.Body;
   private currentSpeed = 0;
 
-  constructor(world: CANNON.World, startPos: CANNON.Vec3) {
+  constructor(world: CANNON.World, startPos: CANNON.Vec3, startQuat?: CANNON.Quaternion) {
     const shape = new CANNON.Box(CAR_HALF_EXTENTS);
     this.body = new CANNON.Body({ mass: 150, linearDamping: 0.4, angularDamping: 0.99 });
     this.body.addShape(shape);
     this.body.position.copy(startPos);
+    if (startQuat) this.body.quaternion.copy(startQuat);
     this.body.angularFactor.set(0, 1, 0); // lock pitch and roll — only yaw allowed
     world.addBody(this.body);
   }
 
-  applyInput(input: PlayerInput, dt: number): void {
+  applyInput(input: PlayerInput, dt: number, speedMultiplier = 1.0): void {
     const { throttle, brake, steer } = input;
+    const maxSpeed = CAR_MAX_SPEED * speedMultiplier;
 
     // Acceleration / braking
     if (throttle > 0) {
-      this.currentSpeed = Math.min(this.currentSpeed + CAR_ACCELERATION * dt * throttle, CAR_MAX_SPEED);
+      this.currentSpeed = Math.min(this.currentSpeed + CAR_ACCELERATION * dt * throttle, maxSpeed);
     } else if (brake > 0) {
       this.currentSpeed = Math.max(this.currentSpeed - CAR_BRAKE_DECEL * dt * brake, 0);
     } else {
@@ -45,7 +47,7 @@ export class CarBody {
 
     // Steering — only when moving
     if (this.currentSpeed > 0.5) {
-      const turnAmount = -steer * CAR_TURN_SPEED * (this.currentSpeed / CAR_MAX_SPEED) * dt;
+      const turnAmount = -steer * CAR_TURN_SPEED * (this.currentSpeed / maxSpeed) * dt;
       const rot = new CANNON.Quaternion();
       rot.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), turnAmount);
       this.body.quaternion = rot.mult(this.body.quaternion);
