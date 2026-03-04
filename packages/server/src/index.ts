@@ -91,7 +91,7 @@ function startGameLoop(roomCode: string): void {
       gameLoops.delete(roomCode);
       const results = Object.values(state.players)
         .sort((a, b) => (a.finishTime ?? Infinity) - (b.finishTime ?? Infinity))
-        .map(p => ({ playerId: p.id, nickname: p.nickname, finishTime: p.finishTime }));
+        .map((p, idx) => ({ playerId: p.id, nickname: p.nickname, position: idx + 1, finishTime: p.finishTime, bestLapMs: p.bestLapMs }));
       io.to(roomCode).emit(EV_RACE_FINISHED, results);
     }
   }, TICK_MS);

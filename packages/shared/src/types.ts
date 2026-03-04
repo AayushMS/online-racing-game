@@ -1,59 +1,61 @@
 // packages/shared/src/types.ts
 
-export interface Vec3 {
-  x: number;
-  y: number;
-  z: number;
-}
-
-export interface Quat {
-  x: number;
-  y: number;
-  z: number;
-  w: number;
-}
+export interface Vec3 { x: number; y: number; z: number; }
+export interface Quat { x: number; y: number; z: number; w: number; }
 
 export type ItemType = 'missile' | 'banana' | 'boost' | 'shield' | 'oil';
 
 export interface PlayerState {
   id: string;
   nickname: string;
-  carIndex: number; // 0-4, selects car model/color
+  carIndex: number;
   position: Vec3;
   rotation: Quat;
   speed: number;
   heldItem: ItemType | null;
-  /** 1-indexed lap counter. Starts at 1, race complete when lap > TOTAL_LAPS */
   lap: number;
-  lapProgress: number; // 0.0 – 1.0 within current lap
+  lapProgress: number;
   finished: boolean;
-  finishTime: number | null;
+  finishTime: number | null;    // ms from race start
+  bestLapMs: number | null;     // best lap in ms
+  checkpointIdx: number;        // 0-7, last checkpoint crossed; starts at 0
   activeBuff?: { type: 'shield' | 'boost'; expiresAtTick: number };
+  spinUntilTick?: number;       // banana/oil spin effect
 }
 
 export interface ItemBoxState {
   id: string;
   position: Vec3;
-  active: boolean; // false = respawning
+  active: boolean;
 }
 
 export interface ActiveEffect {
   id: string;
   type: ItemType;
   position: Vec3;
-  rotation?: Quat;     // orientation for directional effects (bananas, oil slicks)
-  velocity?: Vec3;     // movement for missiles
+  rotation?: Quat;
+  velocity?: Vec3;
   ownerId: string;
-  spawnedAt: number;   // tick when spawned (for lifetime/despawn logic)
+  spawnedAt: number;            // tick when spawned
+  expiresAtTick?: number;       // for banana/oil zones with fixed lifetime
+}
+
+export interface RaceResult {
+  playerId: string;
+  nickname: string;
+  position: number;             // 1-indexed finishing position
+  finishTime: number | null;    // ms from race start
+  bestLapMs: number | null;
 }
 
 export interface GameState {
   phase: 'waiting' | 'countdown' | 'racing' | 'finished';
   tick: number;
-  countdown: number; // 3, 2, 1, 0
+  countdown: number;
   players: Record<string, PlayerState>;
   itemBoxes: ItemBoxState[];
   activeEffects: ActiveEffect[];
+  raceResults?: RaceResult[];   // populated when phase === 'finished'
 }
 
 export interface RoomInfo {
@@ -68,35 +70,21 @@ export interface RoomInfo {
 export interface LapRecord {
   playerId: string;
   lap: number;
-  time: number; // ms
+  time: number;
 }
 
-// Socket.io event payload types
-
 export interface PlayerInputPayload {
-  seq: number;        // sequence number for client prediction reconciliation
-  throttle: number;   // 0 to 1.0
-  brake: number;      // 0 to 1.0
-  steer: number;      // -1.0 to 1.0
+  seq: number;
+  throttle: number;
+  brake: number;
+  steer: number;
   timestamp: number;
 }
 
-export interface JoinRoomPayload {
-  code: string;
-  nickname: string;
-}
+export interface JoinRoomPayload { code: string; nickname: string; }
+export interface CreateRoomPayload { nickname: string; roomName: string; isPrivate: boolean; }
+export interface MatchmakePayload { nickname: string; }
 
-export interface CreateRoomPayload {
-  nickname: string;
-  roomName: string;
-  isPrivate: boolean;
-}
-
-export interface MatchmakePayload {
-  nickname: string;
-}
-
-// Typed Socket.io event maps for full end-to-end type safety
 export interface ClientToServerEvents {
   join_room: (payload: JoinRoomPayload, cb: (res: { ok: boolean; error?: string }) => void) => void;
   create_room: (payload: CreateRoomPayload, cb: (res: { ok: boolean; code?: string; error?: string }) => void) => void;
@@ -112,7 +100,7 @@ export interface ServerToClientEvents {
   room_state: (info: RoomInfo & { players: Record<string, { nickname: string; carIndex: number; ready: boolean; isHost: boolean }> }) => void;
   game_state: (state: GameState) => void;
   race_started: () => void;
-  race_finished: (results: Array<{ playerId: string; nickname: string; finishTime: number | null }>) => void;
+  race_finished: (results: RaceResult[]) => void;
   error: (message: string) => void;
   player_joined: (player: { id: string; nickname: string; carIndex: number }) => void;
   player_left: (playerId: string) => void;

@@ -44,6 +44,9 @@ export class GameLoop {
         lapProgress: 0,
         finished: false,
         finishTime: null,
+        bestLapMs: null,
+        checkpointIdx: 0,
+        spinUntilTick: undefined,
       };
     });
 
