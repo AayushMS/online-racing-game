@@ -1,15 +1,10 @@
 // packages/client/src/game/ItemBoxes.ts
 import * as THREE from 'three';
-import { ItemBoxState } from '@racing/shared';
-
-const ITEM_POSITIONS: { x: number; y: number; z: number }[] = [
-  { x: 0, y: 0.8, z: 40 }, { x: 50, y: 0.8, z: 10 }, { x: -50, y: 0.8, z: 10 },
-  { x: 40, y: 0.8, z: -50 }, { x: -40, y: 0.8, z: -50 }, { x: 0, y: 0.8, z: -65 },
-];
+import { ItemBoxState, ITEM_BOX_WORLD_POSITIONS } from '@racing/shared';
 
 export function createItemBoxes(scene: THREE.Scene): THREE.Mesh[] {
   const boxes: THREE.Mesh[] = [];
-  ITEM_POSITIONS.forEach(pos => {
+  ITEM_BOX_WORLD_POSITIONS.forEach(pos => {
     const geo = new THREE.BoxGeometry(2, 2, 2);
     const mat = new THREE.MeshToonMaterial({ color: 0xffd700, emissive: 0x886600, emissiveIntensity: 0.5 });
     const mesh = new THREE.Mesh(geo, mat);
