@@ -5,7 +5,7 @@ Multiplayer online racing game with real-time gameplay.
 ## Live Demo
 
 - **Frontend:** https://online-racing-game.vercel.app
-- **Backend:** Railway (`magnificent-rejoicing` / `racing-server`)
+- **Backend:** Railway: https://racing-server-production.up.railway.app
 
 ## Tech Stack
 
